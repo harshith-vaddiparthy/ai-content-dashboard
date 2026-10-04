@@ -1,5 +1,7 @@
 # Functional Spec — AI Content Dashboard
 
+> **Building any screen here?** Before any work on the dashboard's UI (adding, changing, fixing or reviewing a screen or component), first load and follow the **shadcn skill** (`.claude/skills/shadcn/SKILL.md`, invoked as `/shadcn`). Its rules decide which component to use and how to compose it.
+
 This turns the goals in `docs/PRD.md` into exact, buildable detail: every screen, every flow, every state. Use this doc when building or reviewing any feature. For *why* we're building it, see `docs/PRD.md`; for the tech plumbing underneath, see `docs/ARCHITECTURE.md`.
 
 **Where things stand (October 2026):** every screen below is built. Until OpenRouter and a database are connected, the app runs in **sample mode** (§8). Drafts are templates built from your brief, and the library is sample content kept in memory. Turning a video concept into a real video waits on Higgsfield (§3c).
@@ -20,15 +22,23 @@ Opening `/` goes straight to the Dashboard.
 **The sidebar is flat: no dropdowns, no collapsible or nested groups.** Every entry is one click to its page. From top to bottom:
 
 1. **App name**: "AI Content Dashboard" with "Personal workspace" underneath. Goes to the Dashboard.
-2. **Generate content**: the main button, filled with the theme's primary color. Goes to `/generate`.
-3. **Dashboard** and **Library**. Library shows a count of everything that isn't archived.
-4. **Create**: a labeled group with direct links to Blog post, Newsletter and Video.
-5. **Settings**, pinned to the bottom.
-6. **Footer**: in sample mode, a small "Sample mode" card with a **Connect OpenRouter** button that opens Settings at Connections. Once connected, it shows which model writes your drafts, linking to Settings at Writing model.
+2. **Dashboard** and **Library**. Library shows a count of everything that isn't archived.
+3. **Create**: a labeled group with direct links to Blog post, Newsletter and Video.
+4. **Settings**, pinned to the bottom.
+
+There's no separate "Generate content" button and no footer card: the Create links go straight to each type, and connection status lives in Settings.
 
 The sidebar collapses to icons with tooltips, and opens as a slide-over panel on phones. There's no team switcher, no account menu and no avatar, because v1 is single-user. This replaced the shadcn `sidebar-07` starting point; its collapsible groups and dropdown menus were removed on purpose.
 
-**Top bar:** a button that collapses the sidebar, breadcrumbs (e.g. Library › Details), a "Sample data" badge while in sample mode, and a light/dark toggle.
+**Top bar:** a button that collapses the sidebar, breadcrumbs (e.g. Library › Details), and the **AI Agent** button on the right. Nothing else: light/dark is chosen in Settings, and sample mode is explained there.
+
+**AI Agent (right sidebar, on every page):** the AI Agent button (or ⌘I / Ctrl+I) opens a sidebar on the right, built the same way as the left one. On a computer the page shifts over to make room; on a phone it slides in over the page. Pressing the button again, the ✕, or the shortcut closes it, and it reopens the way you left it.
+- It's a chat about your content: ideas, titles, outlines, and questions about your library and its numbers. It reads the library (up to the 80 newest pieces) but **can't create, change or delete anything**; to make a piece it points you to Create.
+- Empty state: a short explanation and three suggested questions you can click.
+- Type in the box at the bottom: Enter sends, Shift+Enter starts a new line. The reply streams in; **Stop** ends it early and keeps what arrived. **New chat** clears the conversation.
+- The conversation stays while you move between pages. It's gone after a page reload.
+- It uses the writing model chosen in Settings. In sample mode it gives simple answers built from your library, each labeled as a sample answer.
+- If something goes wrong, it says what happened, with **Try again**.
 
 ## 2. Dashboard
 
@@ -121,7 +131,7 @@ On wide screens, Connections and Writing model sit on the left, and Appearance a
   - **Higgsfield** and **Database** say "Coming soon".
   - Keys are never typed into the app. See `docs/ARCHITECTURE.md` §6 for why.
 - **Writing model**: six models shown as cards, each with what it's good at, its provider and a rough cost per draft. Claude Sonnet 5.5 is the default ("Recommended"). Picking one saves straight away and is remembered on this browser. In sample mode the choice is saved for later.
-- **Appearance**: Light, Dark or Automatic (follows your computer). It stays in step with the toggle in the top bar.
+- **Appearance**: Light, Dark or Automatic (follows your computer).
 - **Sample content** (sample mode only): explains that the library is kept in memory, shows how many pieces it holds, and **Reset** puts the original sample content back after asking first.
 
 ## 7. States & feedback (everywhere, not just one page)
@@ -138,9 +148,9 @@ On wide screens, Connections and Writing model sit on the left, and Appearance a
 
 The app works with no keys and no database, so anyone can try it before setting anything up.
 
-- **No OpenRouter key:** drafts are templates built from your brief, streamed in like a real draft. The Generate page, the brief and the sidebar all say so.
+- **No OpenRouter key:** drafts are templates built from your brief, streamed in like a real draft. The Generate page and the brief say so.
 - **No database:** the library starts with a realistic set of sample pieces (every type, every status, with views and opens), kept in memory. Everything works, but changes are lost when the app restarts. Settings can reset it.
-- The top bar shows a "Sample data" badge the whole time.
+- Settings shows it under Connections and Sample content.
 
 ## 9. Acceptance criteria (how we know v1 is actually done)
 

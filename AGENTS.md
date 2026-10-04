@@ -31,6 +31,7 @@ There's no Prettier; match the surrounding formatting. Once the database lands: 
 
 ## Conventions
 
+- **Hard rule — use the shadcn skill first.** Before any work on the dashboard's UI (adding, changing, fixing or reviewing a screen or component), first load and follow the **shadcn skill** (`.claude/skills/shadcn/SKILL.md`, invoked as `/shadcn`). Its rules decide which component to use and how to compose it. Run `npx shadcn@latest docs <component>` and read the docs before using a component; search the registry (`npx shadcn@latest search`) before writing custom markup. No UI work starts without it.
 - **Hard rule — UI is shadcn/ui only.** Every component must come from the shadcn registry (`npx shadcn@latest add <name>`) or be composed from shadcn primitives already in `components/ui/`. Never add another component library, never hand-roll a component that shadcn already provides. Check the registry before building anything custom.
 - **Navigation is flat.** No dropdown menus, no collapsible or nested sidebar groups — every sidebar entry is one click to its page. Avoid dropdowns for choices too (no Select): short option lists use `ChoiceGroup` (`components/choice-group.tsx`) or Radio Group choice cards.
 - **Icons are HugeIcons:** `<HugeiconsIcon icon={SomeIcon} strokeWidth={2} />`, with `data-icon="inline-start"` or `"inline-end"` when inside a button. No other icon set.
@@ -53,6 +54,7 @@ There's no Prettier; match the surrounding formatting. Once the database lands: 
 - **ItemGroup is a list** (`role="list"`), so wrap each `Item` in `<div role="listitem">`.
 - **Radio choice cards:** `<FieldLabel htmlFor>` › `<Field orientation="horizontal">` › `FieldContent` + `<RadioGroupItem id>`. Base UI puts the `id` on its hidden input, so the label works. A "Blocked aria-hidden…" console warning on click is harmless.
 - **`TypeIcon`:** pass `decorative` when the type is already written next to it, so screen readers don't say it twice.
+- **Chat UI uses the shadcn chat components:** `MessageScroller` (handles scrolling and following a streaming reply), `Message` and `Bubble`. Never hand-roll bubbles or a scroll container. See `components/agent/agent-sidebar.tsx`.
 - **Unsaved work:** wrap it in `<LeaveGuard when={dirty} description="…" />`, so links inside the app and closing the tab ask first.
 - **React Compiler lint rules apply** (even though the compiler is off): no `Date.now()` or `new Date()` during render — use `getNow()` from `lib/db/content.ts` on the server; and no setState inside `useEffect` — use `useMounted()` (`hooks/use-mounted.ts`) or `useSyncExternalStore` for browser-only values.
 - **Route types:** `params` is a Promise; use the global `PageProps<"/library/[id]">` type. Run `npx next typegen` before `tsc`, or those types won't exist.

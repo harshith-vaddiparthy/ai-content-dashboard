@@ -3,11 +3,8 @@
 import { Fragment } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Database01Icon } from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
 
-import { ThemeToggle } from "@/components/theme-toggle"
-import { Badge } from "@/components/ui/badge"
+import { AgentButton } from "@/components/agent/agent-button"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,7 +15,6 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { TYPE_CONFIG } from "@/lib/content/config"
 import { isContentType } from "@/lib/content/types"
 
@@ -51,7 +47,7 @@ function crumbsFor(pathname: string): Crumb[] {
   return [parent, { label: "Not found" }]
 }
 
-export function SiteHeader({ sampleData }: { sampleData: boolean }) {
+export function SiteHeader() {
   const crumbs = crumbsFor(usePathname())
 
   return (
@@ -80,21 +76,8 @@ export function SiteHeader({ sampleData }: { sampleData: boolean }) {
             ))}
           </BreadcrumbList>
         </Breadcrumb>
-
         <div className="ml-auto flex items-center gap-2">
-          {sampleData && (
-            <Tooltip>
-              <TooltipTrigger render={<Badge variant="secondary" className="cursor-default" />}>
-                <HugeiconsIcon icon={Database01Icon} strokeWidth={2} data-icon="inline-start" />
-                Sample data
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-64 text-pretty">
-                Everything here is sample content kept in memory. Your changes last
-                until the app restarts. You can reset it in Settings.
-              </TooltipContent>
-            </Tooltip>
-          )}
-          <ThemeToggle />
+          <AgentButton />
         </div>
       </div>
     </header>

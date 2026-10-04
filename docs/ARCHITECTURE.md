@@ -38,7 +38,7 @@ app/
   page.tsx                      sends "/" to "/dashboard"
   globals.css                   Tailwind + the Caffeine theme tokens
   (dashboard)/
-    layout.tsx                  sidebar + top bar around every page below
+    layout.tsx                  sidebar + top bar + AI agent around every page below
     dashboard/page.tsx          headline cards and charts (SPEC §2)
     generate/page.tsx           pick what to make (SPEC §3a)
     generate/[type]/page.tsx    brief, then draft, then save (SPEC §3b, §3c)
@@ -53,23 +53,25 @@ app/
     settings.ts                 server action: remember the writing model
   api/
     generate/text/route.ts      streams a draft from OpenRouter, or a sample draft
+    agent/route.ts              streams the AI agent's reply, or a sample reply
     generate/video/…            starts a Higgsfield job and reports its progress (not built yet)
 components/
   ui/                           shadcn components only (hard rule, §8)
   app-sidebar.tsx               the flat sidebar (SPEC §1)
   nav-main.tsx                  sidebar links, with the current page highlighted
-  site-header.tsx               top bar: breadcrumbs, "Sample data" badge, theme toggle
+  site-header.tsx               top bar: sidebar button, breadcrumbs, AI Agent button
+  agent/                        the AI agent's right sidebar, its button, and its provider
   page-header.tsx               the title and description at the top of each page
   choice-group.tsx              pick-one buttons, used instead of dropdowns
   content-badges.tsx            type and status badges and icons
   leave-guard.tsx               "Leave without saving?" for unsaved work
   theme-provider.tsx            next-themes setup
-  theme-toggle.tsx              the light/dark button in the top bar
   dashboard/                    headline cards and charts
   generate/                     brief card, draft card, and the form that joins them
   library/                      library table, editor, status, performance, video, delete
   settings/                     connections, writing model, appearance, sample content
 hooks/
+  use-agent-chat.ts             the agent conversation: sends it and streams replies back
   use-draft-stream.ts           sends a brief and streams the draft back
   use-mounted.ts                true once the page is running in the browser
   use-mobile.ts                 whether the screen is phone-sized
@@ -119,6 +121,13 @@ Text comes back in seconds, so it streams in a single request:
 4. Errors come back as JSON (`{ "error": "..." }`) holding a sentence a person can act on, such as "Your OpenRouter account is out of credits." The raw provider error is only logged on the server.
 5. **Save** calls `createContentAction`, which checks the input, stores the piece as a draft, and refreshes every page.
 
+### AI agent (built)
+
+1. The agent sidebar (`components/agent/agent-sidebar.tsx`) keeps the conversation in `hooks/use-agent-chat.ts`. It lives in the dashboard layout, so it survives page changes.
+2. Each message posts the whole conversation to `/api/agent`. The route checks it (`parseConversation` in `lib/ai/agent.ts`), adds a system prompt with the library from `listContent()`, and streams the reply from OpenRouter with the writing model. Without a key it streams `sampleAgentReply`. The `X-Agent-Source` header says which.
+3. The agent is read-only: the route never writes content.
+4. Two sidebars: `AgentProvider` is a second `SidebarProvider` wrapped around the left one, with its own cookie (`agent_state`) and shortcut (⌘I). Inside, `useSidebar()` still means the left sidebar; `useAgent()` reaches the right one.
+
 ### Video (planned): why it needs special handling
 
 Video generation takes minutes, and a Vercel server function can't stay busy waiting that long. So video will run as a job:
@@ -143,12 +152,16 @@ v1 is single-user, so API keys (OpenRouter, Higgsfield, database URL) live as Ve
 
 ## 8. UI standard — hard rule
 
+**The shadcn skill comes first.** Before any work on the dashboard's UI (adding, changing, fixing or reviewing a screen or component), first load and follow the **shadcn skill** (`.claude/skills/shadcn/SKILL.md`, invoked as `/shadcn`). Its rules decide which component to use and how to compose it.
+
 Every component in this dashboard must be a **shadcn/ui** component: either installed as-is from the shadcn registry (`npx shadcn@latest add <component>`), or built by composing other shadcn primitives. No other component library, no hand-rolled component that duplicates something shadcn already provides. This keeps the whole dashboard visually and structurally consistent, and keeps it easy for someone forking this later to recognize and extend.
 
 - **Starting point:** the `sidebar-07` block (`npx shadcn@latest add sidebar-07`), with its collapsible groups, team switcher and user menu removed. Navigation is flat (SPEC §1).
 - **No dropdowns** for navigation or choices. Short lists of options are buttons (`components/choice-group.tsx`, built on Toggle Group) or choice cards (Radio Group inside Field labels).
 - **Base UI underneath:** the `base-nova` components are built on Base UI, so they use a `render` prop where Radix-based shadcn uses `asChild`. A Button that renders a link also needs `nativeButton={false}`.
 - **Small local changes to `components/ui/`:** `badge`, `breadcrumb` and `item` start with `"use client"`, because they use Base UI hooks and server pages import them. Keep that line if one of them is re-added from the registry. The components import `cn` from shadcn's `cn` package; `lib/utils.ts` re-exports it.
+- **`sidebar.tsx` takes `cookieName` and `keyboardShortcut`**, so the AI agent's right sidebar remembers its own state and has its own shortcut. Keep those props if the component is re-added from the registry.
+- **Chat:** the AI agent uses shadcn's chat components (`message-scroller`, `message`, `bubble`). They follow a streaming reply and show a jump-to-latest button on their own.
 - New UI needs → check the shadcn registry first (`npx shadcn@latest add <name>`) before building anything custom.
 - Installed components live in `components/ui/`; app-specific compositions (e.g. `app-sidebar.tsx`, `nav-main.tsx`) live in `components/`.
 - **Theme:** [tweakcn "Caffeine"](https://tweakcn.com/r/themes/caffeine.json), applied via `npx shadcn@latest add https://tweakcn.com/r/themes/caffeine.json`. Warm neutral background, brown/tan primary & secondary, full light + dark variants, with matching radius/shadow/letter-spacing tokens — all defined in `app/globals.css`. Re-run that same command if the theme ever needs reapplying after a shadcn component update overwrites it. Use the theme's tokens (`primary`, `secondary`, `muted`, `chart-1`…`chart-5`) rather than fixed colors.

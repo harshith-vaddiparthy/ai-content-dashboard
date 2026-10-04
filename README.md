@@ -63,6 +63,7 @@ It's intentionally built as a **clean, well-documented foundation** — solo bui
 | **Content Library** | Every piece in one place, with tabs by status (`draft` · `ready` · `published` · `archived`, plus `processing` and `failed` for videos), a type filter, title search and pages. |
 | **Editing & Publishing** | Edit in Markdown, copy as Markdown, and move each piece from draft to ready, published or archived. |
 | **Performance Tracking** | A dashboard with headline numbers, weekly activity, content mix, what's in the works and top performers. Views and opens are entered by hand, and each piece is compared with your average. |
+| **AI Agent** | An **AI Agent** button in the top bar opens a chat in a right sidebar on every page. Ask for ideas, titles and outlines, or how your pieces are doing. It reads your library but never changes it. |
 | **Settings** | Connect OpenRouter (with a live key check), choose from six writing models, and pick light, dark or automatic. |
 | **Sample Mode** | Works with no keys and no database: sample drafts and a sample library, so you can try everything first. |
 
@@ -233,7 +234,7 @@ Contributions, issues, and feature requests are welcome.
 4. Push the branch (`git push origin feature/amazing-feature`)
 5. Open a pull request
 
-Please read [`AGENTS.md`](AGENTS.md) for project conventions first — in particular, **all UI must use shadcn/ui**.
+Please read [`AGENTS.md`](AGENTS.md) for project conventions first — in particular, **all UI must use shadcn/ui, and UI work starts by loading the shadcn skill** (`.claude/skills/shadcn/SKILL.md`).
 
 ---
 

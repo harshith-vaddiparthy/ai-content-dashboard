@@ -46,6 +46,11 @@ A web dashboard where one creator generates long-form written content (blog post
 - Writing model choice for text generation (see §7 for the default).
 - Works before anything is connected: a **sample mode** with sample drafts and a sample library, so the whole app can be tried first.
 
+### 4.5 AI Agent
+- An **AI Agent** button in the top bar opens a chat in a right sidebar, on every page, built the same way as the left sidebar.
+- It helps plan and improve content (ideas, titles, outlines) and answers questions about the library and its numbers, using the writing model from Settings.
+- Read-only: it never creates, edits or deletes content. Works in sample mode with labeled sample answers.
+
 ## 5. Out of Scope (v1)
 
 - User accounts, multi-user, teams, permissions
@@ -66,5 +71,8 @@ A web dashboard where one creator generates long-form written content (blog post
 - Phase 2 candidates: real analytics integrations, scheduled publishing, multi-user support if the fork-it-yourself vision takes off.
 
 ## 8. UI standard
+
+**Hard rule: the shadcn skill comes first.** Before any work on the dashboard's UI (adding, changing, fixing or reviewing a screen or component), first load and follow the **shadcn skill** (`.claude/skills/shadcn/SKILL.md`, invoked as `/shadcn`). Its rules decide which component to use and how to compose it.
+
 
 **shadcn/ui, exclusively.** Every component in the product is either installed from the shadcn registry or composed from shadcn primitives — no other component library. This keeps the dashboard visually consistent and easy for a future forker to recognize and extend. See `docs/ARCHITECTURE.md` §8 for the technical detail.
