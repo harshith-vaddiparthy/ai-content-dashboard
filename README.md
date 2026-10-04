@@ -127,6 +127,7 @@ It's intentionally built as a **clean, well-documented foundation** — solo bui
 │   │   └── settings/         # Connections, writing model, appearance
 │   ├── actions/              # Server actions: every change to content
 │   ├── api/generate/text/    # Streams a draft from OpenRouter (or a sample)
+│   ├── api/agent/            # Streams the AI Agent's reply (or a sample)
 │   ├── layout.tsx            # Root layout
 │   └── page.tsx              # Redirects "/" → "/dashboard"
 ├── components/
@@ -141,6 +142,8 @@ It's intentionally built as a **clean, well-documented foundation** — solo bui
 │   ├── ai/                   # Models, prompts, OpenRouter client, sample drafts
 │   ├── content/              # Types, labels, briefs, dashboard stats, sample data
 │   └── db/                   # Every read & write of content
+├── scripts/                  # check-models: are the writing models still on OpenRouter?
+├── .github/workflows/        # CI: type-check, lint, build, model check
 ├── docs/
 │   ├── PRD.md                # Product requirements — the "why"
 │   ├── SPEC.md               # Screens, flows & acceptance criteria
@@ -186,13 +189,21 @@ Open [http://localhost:3000](http://localhost:3000) in your browser. Settings wa
 
 | Variable | Description | Used yet? |
 |---|---|---|
-| `OPENROUTER_API_KEY` | API key for text generation | Yes. Without it, drafts are samples |
+| `OPENROUTER_API_KEY` | API key for drafts and the AI Agent ([get one](https://openrouter.ai/settings/keys)) | Yes. Without it, drafts are samples |
 | `HIGGSFIELD_API_KEY` | API key for video generation | Not yet |
 | `DATABASE_URL` | PostgreSQL connection string | Not yet |
 
-All three are optional. On Vercel, add them in the project's environment variables, then redeploy.
+All three are optional.
 
-> ⚠️ Never commit real keys. All `.env*` files are git-ignored.
+| Where | What to do |
+|---|---|
+| Your computer | Put them in `.env.local` (copied from `.env.example`), then restart `npm run dev` |
+| Vercel | Project → Settings → Environment Variables. Add each for **Production** and **Preview**, mark it **Sensitive**, then redeploy |
+| GitHub | Nothing. CI runs in sample mode and needs no keys |
+
+> ⚠️ Never commit real keys. `.env*` files are git-ignored (except the empty `.env.example`).
+>
+> 💸 Give your OpenRouter key a **credit limit** when you create it. The app has no sign-in, so anyone with your deployed URL can use it; the limit caps what that can cost. Each request's tokens and cost are logged on the server (Vercel → Logs).
 
 ---
 
@@ -204,6 +215,10 @@ All three are optional. On Vercel, add them in the project's environment variabl
 | `npm run build` | Create a production build |
 | `npm run start` | Run the production build |
 | `npm run lint` | Lint the codebase with ESLint |
+| `npm run typecheck` | Type-check the codebase |
+| `npm run check:models` | Check the writing models are still on OpenRouter, at the listed prices (Node 22.18+) |
+
+GitHub Actions runs type-check, lint and build on every push and pull request, plus the model check every Monday. Vercel deploys on its own after each push to `main`.
 
 Prisma's `npx prisma studio` and `npx prisma migrate dev` join these once the database is added.
 

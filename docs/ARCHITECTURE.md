@@ -76,9 +76,10 @@ hooks/
   use-mounted.ts                true once the page is running in the browser
   use-mobile.ts                 whether the screen is phone-sized
 lib/
-  ai/models.ts                  the six writing models and the default
+  ai/models.ts                  the six writing models, the default, and each one's fallback
   ai/prompts.ts                 the instructions sent to the model (tune the writing voice here)
-  ai/openrouter.ts              the only place the app talks to OpenRouter
+  ai/openrouter.ts              the only place the app talks to OpenRouter (see "OpenRouter" in §5)
+  ai/http.ts                    shared route plumbing: same-site check, streamed text, friendly errors
   ai/sample-draft.ts            sample-mode drafts, built from the brief
   content/types.ts              ContentItem, content types and statuses
   content/config.ts             labels, icons and descriptions for each type and status
@@ -94,8 +95,11 @@ lib/
   clipboard.ts                  copy text, or a piece as Markdown
   site.ts                       app name and copy, in one place for rebranding
   utils.ts                      cn() for joining class names
+scripts/
+  check-models.mjs              checks the writing models against OpenRouter's live list (CI runs it)
+.github/workflows/ci.yml        type-check, lint and build on every push; the model check weekly (§9)
 docs/                           PRD, SPEC, ARCHITECTURE
-.env.example                    the three settings the app reads
+.env.example                    the three settings the app reads, with where each one goes
 ```
 
 ## 4. Data model (v1, kept minimal)
@@ -126,7 +130,24 @@ Text comes back in seconds, so it streams in a single request:
 1. The agent sidebar (`components/agent/agent-sidebar.tsx`) keeps the conversation in `hooks/use-agent-chat.ts`. It lives in the dashboard layout, so it survives page changes.
 2. Each message posts the whole conversation to `/api/agent`. The route checks it (`parseConversation` in `lib/ai/agent.ts`), adds a system prompt with the library from `listContent()`, and streams the reply from OpenRouter with the writing model. Without a key it streams `sampleAgentReply`. The `X-Agent-Source` header says which.
 3. The agent is read-only: the route never writes content.
-4. Two sidebars: `AgentProvider` is a second `SidebarProvider` wrapped around the left one, with its own cookie (`agent_state`) and shortcut (⌘I). Inside, `useSidebar()` still means the left sidebar; `useAgent()` reaches the right one.
+4. The library summary at the top of the conversation repeats on every turn, so the agent asks OpenRouter to cache it (cheaper follow-ups on models that support caching).
+5. Two sidebars: `AgentProvider` is a second `SidebarProvider` wrapped around the left one, with its own cookie (`agent_state`) and shortcut (⌘I). Inside, `useSidebar()` still means the left sidebar; `useAgent()` reaches the right one.
+
+### OpenRouter (how every AI call is made)
+
+Both routes call `streamChat()` in `lib/ai/openrouter.ts`, OpenRouter's chat completions API (`https://openrouter.ai/api/v1`). Following OpenRouter's current docs:
+
+- **Key:** `OPENROUTER_API_KEY`, read on the server only (`getOpenRouterKey()`), sent as `Authorization: Bearer …`.
+- **App attribution:** `HTTP-Referer` (the production URL from Vercel, or localhost), `X-OpenRouter-Title`, `X-OpenRouter-Categories: writing-assistant`, and `X-OpenRouter-App-Visibility: hidden`, so requests are labeled as this app in your OpenRouter activity but kept out of public rankings.
+- **Fallback model:** each request sends `models: [chosen, fallback]` (`fallbackFor()` in `lib/ai/models.ts`). If the chosen model is down, rate-limited or refuses, OpenRouter tries the fallback, and bills only the one that answered. The routes report that model in `X-Draft-Model` / `X-Agent-Model`, so a saved draft records who really wrote it.
+- **Cost caps:** `max_completion_tokens` (16,000 for a draft, 4,000 for an agent reply) and `reasoning: { effort: "low", exclude: true }`. Most of the six models think before writing, at high effort by default; low effort is faster and much cheaper for writing.
+- **Streaming:** server-sent events. Keep-alive comments (`: OPENROUTER PROCESSING`) are skipped and `data: [DONE]` ends the reply. `streamChat()` waits for the first words before answering the browser, so a failure at the start (including an error sent inside a 200 response, or an empty reply) becomes a proper error with a friendly message. A failure partway through ends the stream with an error, and the page shows it.
+- **Stopping:** pressing Stop or closing the page aborts the request to OpenRouter, which stops generation and billing. If no words arrive within 90 seconds the request is abandoned.
+- **Errors:** every OpenRouter status (400–529, including out-of-credits `402`, moderation `403`, retired model `404`, rate limit `429`, overloaded `529`) maps to a sentence a person can act on. The raw message, `X-OpenRouter-Request-Id` and provider details go to the server log only.
+- **Usage log:** when a reply finishes, the server logs tokens in and out (cached and reasoning tokens noted) and the exact cost OpenRouter reports, one line per request. On Vercel that's the project's Logs tab.
+- **Key check:** the Settings page calls `GET /key`, which costs nothing and runs no model.
+- **Same-site only:** the AI routes refuse requests that browsers label as coming from another website (`Sec-Fetch-Site`), so another page can't spend your credits through a visitor's browser. It's not a password: scripts can still call the routes, so the credit limit on the key is the real cap (§6).
+- **Time limit:** both routes set `maxDuration = 300`, so a long draft isn't cut off by Vercel.
 
 ### Video (planned): why it needs special handling
 
@@ -139,6 +160,16 @@ Video generation takes minutes, and a Vercel server function can't stay busy wai
 ## 6. API keys & secrets
 
 v1 is single-user, so API keys (OpenRouter, Higgsfield, database URL) live as Vercel environment variables, or in `.env.local` on your own computer. They're never typed into the app's UI and never stored in the database. The Settings page shows whether each one is set, and checks the OpenRouter key with OpenRouter, on the server, without running a model. If this ever becomes multi-user (per the fork-it-yourself goal in the PRD), per-user encrypted key storage would need to be built then. It's not needed now.
+
+Where each secret goes:
+
+| Place | What goes there | Why |
+| --- | --- | --- |
+| **Vercel** → Project → Settings → Environment Variables | `OPENROUTER_API_KEY`, for **Production** and **Preview**, marked **Sensitive** | the running app reads it. A change only applies after a redeploy |
+| **`.env.local`** on your computer (git ignores it) | the same variable, copied from `.env.example` | `npm run dev` reads it. Restart after changing it |
+| **GitHub** | nothing | CI builds in sample mode and reads OpenRouter's public model list, so it needs no key. The repo is public: never put a key in it, in a workflow, or in GitHub Actions secrets |
+
+Spend safety: give the OpenRouter key a **credit limit** when creating it (openrouter.ai → Settings → API Keys), as OpenRouter recommends. The deployed app has no sign-in (multi-user auth is out of scope for v1, PRD §6), so anyone with the URL can use it, and the key's limit is what caps the spend.
 
 ## 7. Design principles (for forkability)
 
@@ -168,6 +199,7 @@ Every component in this dashboard must be a **shadcn/ui** component: either inst
 
 ## 9. Deployment
 
-- GitHub repo → Vercel project, auto-deploy on push to `main`.
+- GitHub repo → Vercel project, auto-deploy on push to `main` (and a preview deploy for every pull request), through Vercel's GitHub integration.
+- **CI** (`.github/workflows/ci.yml`, GitHub Actions) runs on every push and pull request: type-check, lint and production build. It catches mistakes; it doesn't deploy (Vercel does). A second job runs `npm run check:models` on every push and every Monday: it fails if one of the six writing models has left OpenRouter or retires within two weeks, and warns if a price in `lib/ai/models.ts` no longer matches. Neither job needs a secret.
 - Keys and the database are configured in Vercel project settings (never committed to the repo). With none set, the deployed app runs in sample mode.
 - Sample mode keeps the library in the server's memory. On Vercel that memory doesn't last: servers start and stop on their own, and each keeps its own copy, so edits made there can vanish. A real database fixes that.

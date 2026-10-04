@@ -81,6 +81,7 @@ The page has two cards side by side: the **Brief** and the **Draft**.
 5. **Save to library** saves it as a `draft` and opens its detail page. Nothing is saved before this.
 6. **Leaving with an unsaved draft asks first:** "Leave without saving?", with **Keep editing** or **Leave**. Closing or reloading the tab brings up the browser's own warning.
 7. **If writing fails**, the Draft card says "Couldn't write the post" (or newsletter, or concept) with the reason in plain words, and **Try again**.
+8. **If the chosen model is down or busy**, a backup model writes the draft instead: Claude Sonnet 5.5, or GPT-6.1 Sol when the chosen model is a Claude. The saved piece records the model that actually wrote it ("Written by" in §5).
 
 ### 3c. Planning a video (`/generate/video`)
 
@@ -130,7 +131,7 @@ On wide screens, Connections and Writing model sit on the left, and Appearance a
   - **OpenRouter, connected**: the app checks the key with OpenRouter and shows **Connected** (with **See spending**), **Key not accepted** (with **Get a new key**), or **Couldn't check**.
   - **Higgsfield** and **Database** say "Coming soon".
   - Keys are never typed into the app. See `docs/ARCHITECTURE.md` §6 for why.
-- **Writing model**: six models shown as cards, each with what it's good at, its provider and a rough cost per draft. Claude Sonnet 5.5 is the default ("Recommended"). Picking one saves straight away and is remembered on this browser. In sample mode the choice is saved for later.
+- **Writing model**: six models shown as cards, each with what it's good at, its provider and a rough cost per draft. Claude Sonnet 5.5 is the default ("Recommended"). The same model answers the AI Agent. Picking one saves straight away and is remembered on this browser. In sample mode the choice is saved for later.
 - **Appearance**: Light, Dark or Automatic (follows your computer).
 - **Sample content** (sample mode only): explains that the library is kept in memory, shows how many pieces it holds, and **Reset** puts the original sample content back after asking first.
 

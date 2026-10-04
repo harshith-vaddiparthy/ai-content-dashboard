@@ -1,5 +1,7 @@
 import "server-only"
 
+import { getOpenRouterKey } from "@/lib/ai/openrouter"
+
 /**
  * The outside services this app connects to. Keys live in environment
  * variables only (Vercel project settings, or .env.local on your computer).
@@ -22,7 +24,7 @@ function hasEnv(name: string) {
 }
 
 export function isOpenRouterConnected() {
-  return hasEnv("OPENROUTER_API_KEY")
+  return getOpenRouterKey() !== null
 }
 
 export function getIntegrations(): Integration[] {

@@ -64,7 +64,7 @@ export const WRITING_MODELS = [
     provider: "DeepSeek",
     description: "The cheapest option. Fine for rough ideas and outlines.",
     tag: "Budget",
-    price: { input: 0.3, output: 1.2 },
+    price: { input: 0.003, output: 2.4 },
   },
 ] as const satisfies readonly WritingModel[]
 
@@ -85,6 +85,15 @@ export function getModel(id: string | null | undefined): WritingModel {
     WRITING_MODELS.find((model) => model.id === id) ??
     WRITING_MODELS.find((model) => model.id === DEFAULT_MODEL_ID)!
   )
+}
+
+/**
+ * The model OpenRouter switches to if the chosen one is down, overloaded or
+ * refuses: Claude Sonnet, or GPT-6.1 Sol when the chosen model is already a
+ * Claude (so one provider's outage doesn't take both down).
+ */
+export function fallbackFor(model: WritingModel): ModelId {
+  return model.provider === "Anthropic" ? "openai/gpt-6.1-sol" : DEFAULT_MODEL_ID
 }
 
 /** A readable name for whatever model wrote an item. Falls back to the raw id. */

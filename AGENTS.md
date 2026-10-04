@@ -24,8 +24,11 @@ npm run dev                            # local dev server on http://localhost:30
 npm run build                          # production build
 npm run start                          # run the production build
 npm run lint                           # ESLint (includes the React Compiler rules)
-npx next typegen && npx tsc --noEmit   # type-check (typegen creates the route types first)
+npm run typecheck                      # type-check (runs `next typegen` first for the route types)
+npm run check:models                   # are the six writing models still on OpenRouter, at our prices?
 ```
+
+CI (`.github/workflows/ci.yml`) runs typecheck, lint, build and the model check. It needs no secrets; never add one.
 
 There's no Prettier; match the surrounding formatting. Once the database lands: `npx prisma studio` (browse it) and `npx prisma migrate dev` (apply schema changes).
 
@@ -37,7 +40,8 @@ There's no Prettier; match the surrounding formatting. Once the database lands: 
 - **Icons are HugeIcons:** `<HugeiconsIcon icon={SomeIcon} strokeWidth={2} />`, with `data-icon="inline-start"` or `"inline-end"` when inside a button. No other icon set.
 - **Use the theme to the fullest.** Colors come from the Caffeine tokens (`primary`, `secondary`, `muted`, `chart-1`…`chart-5`), never hard-coded values. Recurring patterns: headline cards use `bg-linear-to-t from-primary/5 to-card shadow-xs dark:bg-card`; icon tiles use `bg-primary/10 text-primary`.
 - All calls to OpenRouter/Higgsfield live in `lib/ai/*` and run only on the server: route handlers under `app/api/**`, plus the read-only key check on the Settings page (a server component). Never call them from client components; never let an API key reach the browser.
-- Secrets live in environment variables (listed in `.env.example`) — never commit real keys, never store them in the database in v1, never add a field for typing them into the UI.
+- Secrets live in environment variables (listed in `.env.example`) — never commit real keys, never store them in the database in v1, never add a field for typing them into the UI. `OPENROUTER_API_KEY` goes in Vercel (Production + Preview, Sensitive) and `.env.local`; **nothing goes in GitHub** (the repo is public). See `docs/ARCHITECTURE.md` §6.
+- **Every OpenRouter call goes through `streamChat()` in `lib/ai/openrouter.ts`** (attribution headers, fallback model, token cap, low reasoning effort, friendly errors, usage log). Routes use `lib/ai/http.ts` for the same-site check and responses. Don't call `fetch("https://openrouter.ai/…")` anywhere else.
 - **All content reads and writes go through `lib/db/content.ts`.** Changes go through the server actions in `app/actions/*`, which check their input and refresh every page. Moving to Postgres should only mean rewriting `lib/db/content.ts`.
 - **Sample mode must keep working** with no keys and no database: the AI route falls back to `lib/ai/sample-draft.ts`, and the library to the in-memory store.
 - Pages are server components; add `"use client"` only where there's interaction. Format dates and numbers on the server with `lib/format.ts` (US English), then pass plain strings to client components.

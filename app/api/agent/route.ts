@@ -1,9 +1,16 @@
 import { buildAgentMessages, parseConversation, sampleAgentReply } from "@/lib/ai/agent"
-import { OpenRouterError, streamChat } from "@/lib/ai/openrouter"
+import { errorResponse, forbidden, isSameOrigin, textResponse } from "@/lib/ai/http"
+import { fallbackFor } from "@/lib/ai/models"
+import { streamChat } from "@/lib/ai/openrouter"
 import { streamWords } from "@/lib/ai/sample-draft"
 import { getNow, listContent } from "@/lib/db/content"
 import { isOpenRouterConnected } from "@/lib/integrations"
 import { getWritingModel } from "@/lib/preferences"
+
+export const maxDuration = 300
+
+/** Chat replies are short; this caps what one answer can cost. */
+const MAX_REPLY_TOKENS = 4_000
 
 /**
  * POST /api/agent
@@ -13,10 +20,14 @@ import { getWritingModel } from "@/lib/preferences"
  * so it can answer questions about it. Without an OpenRouter key it streams a
  * sample answer instead.
  *
- * Header on success: X-Agent-Source: "openrouter" | "sample"
+ * Headers on success:
+ *   X-Agent-Source: "openrouter" | "sample"
+ *   X-Agent-Model:  the model that answered (real replies only)
  * Errors come back as JSON: { "error": "A sentence a person can act on." }
  */
 export async function POST(request: Request) {
+  if (!isSameOrigin(request)) return forbidden()
+
   let input: unknown
   try {
     input = await request.json()
@@ -32,17 +43,12 @@ export async function POST(request: Request) {
     return Response.json({ error: parsed.error }, { status: 400 })
   }
 
-  const headers = {
-    "Content-Type": "text/plain; charset=utf-8",
-    "Cache-Control": "no-store",
-  }
   const items = await listContent()
 
   if (!isOpenRouterConnected()) {
     const question = parsed.turns.at(-1)?.content ?? ""
-    const reply = streamWords(sampleAgentReply(question, items))
-    return new Response(reply.pipeThrough(new TextEncoderStream()), {
-      headers: { ...headers, "X-Agent-Source": "sample" },
+    return textResponse(streamWords(sampleAgentReply(question, items)), {
+      "X-Agent-Source": "sample",
     })
   }
 
@@ -51,23 +57,15 @@ export async function POST(request: Request) {
   try {
     const reply = await streamChat({
       model: model.id,
+      fallbacks: [fallbackFor(model)],
       messages: buildAgentMessages(parsed.turns, items, now),
+      maxTokens: MAX_REPLY_TOKENS,
+      // Every turn resends the same library summary, so cache it.
+      cache: true,
       signal: request.signal,
     })
-    return new Response(reply.pipeThrough(new TextEncoderStream()), {
-      headers: { ...headers, "X-Agent-Source": "openrouter" },
-    })
+    return textResponse(reply.text, { "X-Agent-Source": "openrouter", "X-Agent-Model": reply.model })
   } catch (error) {
-    if (error instanceof OpenRouterError) {
-      return Response.json({ error: error.message }, { status: error.status })
-    }
-    if (request.signal.aborted) {
-      return new Response(null, { status: 499 })
-    }
-    console.error(error)
-    return Response.json(
-      { error: "Something went wrong reaching the agent. Try again." },
-      { status: 500 }
-    )
+    return errorResponse(error, request, "Something went wrong reaching the agent. Try again.")
   }
 }
