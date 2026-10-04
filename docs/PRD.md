@@ -30,20 +30,21 @@ A web dashboard where one creator generates long-form written content (blog post
 
 ### 4.2 Content Library
 
-- One place listing everything generated: type, title, status (`draft` / `processing` / `ready` / `published` / `archived`), created date.
+- One place listing everything generated: type, title, status (`draft` / `processing` / `ready` / `published` / `archived`, plus `failed` for a video that didn't render), created date.
 - Open an item to view/edit its text, or view/replace its generated video.
 - Filter by type and status.
 
 ### 4.3 Performance Tracking (v1 — intentionally simple)
 
-- Dashboard overview: counts by type and status, recent activity.
+- Dashboard overview: headline numbers (created, published, views, newsletter opens), weekly activity, the content mix, what's still in the works, top performers and recent activity. All worked out from the library itself.
 - Per item: a "mark as published" action with a published date, plus optional manual stat fields (e.g. views, opens) the user fills in themselves.
 - **Explicitly not in v1:** pulling live stats from social platforms, email providers, or video platforms — there's nothing to connect to yet. This is a deliberate phase-2 item once real publishing destinations exist.
 
 ### 4.4 Settings
 
 - Shows connection status for OpenRouter and Higgsfield (configured via environment variables, not typed into the UI — keeps API keys off the client and out of the database in v1).
-- Default model picker for text generation.
+- Writing model choice for text generation (see §7 for the default).
+- Works before anything is connected: a **sample mode** with sample drafts and a sample library, so the whole app can be tried first.
 
 ## 5. Out of Scope (v1)
 
@@ -61,7 +62,7 @@ A web dashboard where one creator generates long-form written content (blog post
 
 ## 7. Open Questions / Future Phases
 
-- Which specific OpenRouter model(s) to default to.
+- ~~Which specific OpenRouter model(s) to default to.~~ **Decided:** Claude Sonnet 5.5 is the default. Settings offers six models to switch between: Claude Sonnet 5.5, Claude Opus 5.5, Claude Fable 5.1, GPT-6.1 Sol, Gemini 3.8 Flash and DeepSeek V4.1 Flash.
 - Phase 2 candidates: real analytics integrations, scheduled publishing, multi-user support if the fork-it-yourself vision takes off.
 
 ## 8. UI standard

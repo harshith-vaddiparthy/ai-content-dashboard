@@ -1,52 +1,82 @@
+import type { Metadata } from "next"
 import Link from "next/link"
-import { FileTextIcon, MailIcon, VideoIcon, SparklesIcon } from "lucide-react"
+import { AiMagicIcon, Analytics01Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 
+import { ActivityChart } from "@/components/dashboard/activity-chart"
+import { MixChart } from "@/components/dashboard/mix-chart"
+import { PipelineChart } from "@/components/dashboard/pipeline-chart"
+import { RecentContent } from "@/components/dashboard/recent-content"
+import { SectionCards } from "@/components/dashboard/section-cards"
+import { TopPerforming } from "@/components/dashboard/top-performing"
+import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { toContentRow } from "@/lib/content/rows"
+import { getDashboardData, getNow, listContent } from "@/lib/db/content"
 
-const stats = [
-  { label: "Blog posts", value: 0, icon: FileTextIcon },
-  { label: "Newsletters", value: 0, icon: MailIcon },
-  { label: "Videos", value: 0, icon: VideoIcon },
-]
+export const metadata: Metadata = { title: "Dashboard" }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const [data, items, now] = await Promise.all([getDashboardData(), listContent(), getNow()])
+  const recent = items
+    .filter((item) => item.status !== "archived")
+    .slice(0, 6)
+    .map((item) => toContentRow(item, now))
+
   return (
     <>
-      <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardHeader>
-              <CardTitle className="text-sm font-normal text-muted-foreground">
-                {stat.label}
-              </CardTitle>
-              <CardAction>
-                <stat.icon className="size-4 text-muted-foreground" />
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <span className="text-3xl font-semibold">{stat.value}</span>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="How your content is doing: what you made, what went live, and what people read."
+      />
 
-      <Card className="flex min-h-[60vh] flex-1 items-center justify-center md:min-h-min">
-        <CardContent className="flex flex-col items-center gap-3 text-center">
-          <div className="bg-primary/10 flex size-12 items-center justify-center rounded-full">
-            <SparklesIcon className="text-primary size-6" />
+      {data.isEmpty ? (
+        <div className="px-4 lg:px-6">
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />
+              </EmptyMedia>
+              <EmptyTitle>Nothing to measure yet</EmptyTitle>
+              <EmptyDescription>
+                Once you create and publish content, your numbers and charts show up here.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button nativeButton={false} render={<Link href="/generate" />}>
+                <HugeiconsIcon icon={AiMagicIcon} strokeWidth={2} data-icon="inline-start" />
+                Generate your first piece
+              </Button>
+            </EmptyContent>
+          </Empty>
+        </div>
+      ) : (
+        <>
+          <SectionCards data={data} />
+          <div className="px-4 lg:px-6">
+            <ActivityChart activity={data.activity} />
           </div>
-          <div>
-            <p className="font-medium">No content yet</p>
-            <p className="text-muted-foreground text-sm">
-              Generate your first blog post, newsletter, or video to see activity here.
-            </p>
+          <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @3xl/main:grid-cols-2 @5xl/main:grid-cols-3">
+            <MixChart mix={data.mix} />
+            <PipelineChart pipeline={data.pipeline} />
+            <TopPerforming
+              ranked={data.topPerforming}
+              className="@3xl/main:col-span-2 @5xl/main:col-span-1"
+            />
           </div>
-          <Button nativeButton={false} render={<Link href="/generate" />}>
-            Generate content
-          </Button>
-        </CardContent>
-      </Card>
+          <div className="px-4 lg:px-6">
+            <RecentContent rows={recent} />
+          </div>
+        </>
+      )}
     </>
   )
 }

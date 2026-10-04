@@ -57,12 +57,14 @@ It's intentionally built as a **clean, well-documented foundation** — solo bui
 
 | Feature | Description |
 |---|---|
-| **Blog Post Generation** | Long-form articles from a topic or prompt, with a selectable AI model via OpenRouter. |
-| **Newsletter Generation** | Structured, email-ready long-form content. |
-| **AI Video Pipeline** | Two steps: OpenRouter drafts a script and shot list → you review and edit it → Higgsfield renders the video. |
-| **Content Library** | Every item in one place, filterable by type and status (`draft` · `processing` · `ready` · `published` · `archived`). |
-| **Performance Tracking** | Overview counts, recent activity, "mark as published", and optional manual stats (views, opens). |
-| **Settings** | Connection status for OpenRouter and Higgsfield, plus a default model picker. |
+| **Blog Post Generation** | Write from a short brief: topic, audience, tone and length. The draft streams in word by word; edit it, write it again (with undo), then save it. |
+| **Newsletter Generation** | Email-ready issues with a subject line, short sections and a sign-off. |
+| **AI Video Pipeline** | OpenRouter drafts the concept (hook, scenes, voiceover, call to action) in the style, shape and length you pick. Rendering with Higgsfield comes next. |
+| **Content Library** | Every piece in one place, with tabs by status (`draft` · `ready` · `published` · `archived`, plus `processing` and `failed` for videos), a type filter, title search and pages. |
+| **Editing & Publishing** | Edit in Markdown, copy as Markdown, and move each piece from draft to ready, published or archived. |
+| **Performance Tracking** | A dashboard with headline numbers, weekly activity, content mix, what's in the works and top performers. Views and opens are entered by hand, and each piece is compared with your average. |
+| **Settings** | Connect OpenRouter (with a live key check), choose from six writing models, and pick light, dark or automatic. |
+| **Sample Mode** | Works with no keys and no database: sample drafts and a sample library, so you can try everything first. |
 
 ---
 
@@ -74,10 +76,11 @@ It's intentionally built as a **clean, well-documented foundation** — solo bui
 | Language | [TypeScript 5](https://www.typescriptlang.org) |
 | UI Library | [React 19](https://react.dev) |
 | Components | [shadcn/ui](https://ui.shadcn.com) — the only component library used |
-| Styling | [Tailwind CSS 4](https://tailwindcss.com) |
-| Icons | [Lucide](https://lucide.dev) |
-| Database | [PostgreSQL](https://www.postgresql.org) (Neon via Vercel) |
-| ORM | [Prisma](https://www.prisma.io) |
+| Styling | [Tailwind CSS 4](https://tailwindcss.com) + the [tweakcn Caffeine](https://tweakcn.com) theme |
+| Icons | [HugeIcons](https://hugeicons.com) |
+| Charts | [Recharts](https://recharts.org), through shadcn's Chart component |
+| Database | [PostgreSQL](https://www.postgresql.org) (Neon via Vercel), planned. Sample data in memory until then |
+| ORM | [Prisma](https://www.prisma.io), planned |
 | Text AI | [OpenRouter](https://openrouter.ai) |
 | Video AI | [Higgsfield](https://higgsfield.ai) |
 | Hosting | [Vercel](https://vercel.com) |
@@ -101,9 +104,10 @@ It's intentionally built as a **clean, well-documented foundation** — solo bui
                                   └──────────────────┘
 ```
 
-- **One app, no separate backend** — Next.js route handlers act as the API.
+- **One app, no separate backend** — Next.js route handlers and server actions act as the API.
 - **API keys never reach the browser** — all AI calls run server-side in `lib/ai/*`.
 - **Secrets live in environment variables**, never in the database.
+- **Higgsfield and the database are next.** Until then the app runs in sample mode, with sample drafts and a sample library kept in memory.
 
 📖 For the full design, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
@@ -115,25 +119,31 @@ It's intentionally built as a **clean, well-documented foundation** — solo bui
 .
 ├── app/
 │   ├── (dashboard)/
-│   │   ├── layout.tsx        # Sidebar shell shared by all dashboard pages
-│   │   ├── dashboard/        # Overview & stats
-│   │   ├── library/          # Content library
-│   │   ├── generate/         # Blog / newsletter / video entry points
-│   │   └── settings/         # Connections & model picker
+│   │   ├── layout.tsx        # Sidebar and top bar shared by every page
+│   │   ├── dashboard/        # Headline numbers & charts
+│   │   ├── generate/         # Pick what to make, then brief → draft → save
+│   │   ├── library/          # The library, and one page per piece
+│   │   └── settings/         # Connections, writing model, appearance
+│   ├── actions/              # Server actions: every change to content
+│   ├── api/generate/text/    # Streams a draft from OpenRouter (or a sample)
 │   ├── layout.tsx            # Root layout
 │   └── page.tsx              # Redirects "/" → "/dashboard"
 ├── components/
-│   ├── ui/                   # shadcn/ui primitives
-│   ├── app-sidebar.tsx
-│   ├── nav-main.tsx
-│   ├── nav-user.tsx
-│   └── site-header.tsx
+│   ├── ui/                   # shadcn/ui components
+│   ├── dashboard/            # KPI cards & charts
+│   ├── generate/             # Brief & draft cards
+│   ├── library/              # Table, editor, status & performance cards
+│   ├── settings/             # Settings cards
+│   └── app-sidebar.tsx       # The flat sidebar (plus other shared pieces)
 ├── hooks/                    # Shared React hooks
-├── lib/                      # Utilities (and lib/ai/* for AI providers)
+├── lib/
+│   ├── ai/                   # Models, prompts, OpenRouter client, sample drafts
+│   ├── content/              # Types, labels, briefs, dashboard stats, sample data
+│   └── db/                   # Every read & write of content
 ├── docs/
 │   ├── PRD.md                # Product requirements — the "why"
 │   ├── SPEC.md               # Screens, flows & acceptance criteria
-│   └── ARCHITECTURE.md       # System design & data model
+│   └── ARCHITECTURE.md       # System design, data model & full folder map
 └── public/                   # Static assets
 ```
 
@@ -143,10 +153,12 @@ It's intentionally built as a **clean, well-documented foundation** — solo bui
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org) 20 or newer
+- [Node.js](https://nodejs.org) 20.9 or newer
 - npm (bundled with Node.js)
-- A PostgreSQL database (e.g. [Neon](https://neon.tech))
-- API keys for [OpenRouter](https://openrouter.ai) and [Higgsfield](https://higgsfield.ai)
+
+That's all you need to try it. With no keys and no database, the app runs in **sample mode**: drafts are templates built from your brief, and the library is sample content kept in memory (changes reset when the app restarts).
+
+For real AI drafts, add an [OpenRouter](https://openrouter.ai) API key. A [Higgsfield](https://higgsfield.ai) key and a PostgreSQL database (e.g. [Neon](https://neon.tech)) come into play once video rendering and the database are built.
 
 ### Installation
 
@@ -158,24 +170,26 @@ cd ai-content-dashboard
 # 2. Install dependencies
 npm install
 
-# 3. Add your environment variables
+# 3. Optional: add your keys (skip this for sample mode)
 cp .env.example .env.local
 
 # 4. Start the development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser. Settings walks you through connecting OpenRouter.
 
 ---
 
 ## Environment Variables
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `OPENROUTER_API_KEY` | API key for text generation |
-| `HIGGSFIELD_API_KEY` | API key for video generation |
+| Variable | Description | Used yet? |
+|---|---|---|
+| `OPENROUTER_API_KEY` | API key for text generation | Yes. Without it, drafts are samples |
+| `HIGGSFIELD_API_KEY` | API key for video generation | Not yet |
+| `DATABASE_URL` | PostgreSQL connection string | Not yet |
+
+All three are optional. On Vercel, add them in the project's environment variables, then redeploy.
 
 > ⚠️ Never commit real keys. All `.env*` files are git-ignored.
 
@@ -189,19 +203,22 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `npm run build` | Create a production build |
 | `npm run start` | Run the production build |
 | `npm run lint` | Lint the codebase with ESLint |
-| `npx prisma studio` | Browse the database visually |
-| `npx prisma migrate dev` | Apply schema changes locally |
+
+Prisma's `npx prisma studio` and `npx prisma migrate dev` join these once the database is added.
 
 ---
 
 ## Roadmap
 
-- [x] Dashboard shell with sidebar navigation
-- [ ] Blog & newsletter generation (OpenRouter)
-- [ ] Video pipeline with review step (Higgsfield)
-- [ ] Content library with filters
-- [ ] Manual performance tracking
-- [ ] Settings & connection status
+- [x] Dashboard shell with a flat sidebar (no dropdowns)
+- [x] Dashboard with headline numbers and charts
+- [x] Blog & newsletter generation (OpenRouter, streamed, with a sample mode)
+- [x] Video concepts with a review step
+- [ ] Video rendering (Higgsfield)
+- [x] Content library with tabs, filters and search
+- [x] Editing, statuses and manual performance tracking
+- [x] Settings: connections, writing model and appearance
+- [ ] PostgreSQL database (Neon + Prisma)
 - [ ] *Phase 2:* live stats from publishing platforms
 
 ---
